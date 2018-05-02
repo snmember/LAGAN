@@ -1,0 +1,2 @@
+# LAGAN
+Software Praktikum: Seqan
