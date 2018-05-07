@@ -12,11 +12,11 @@
 using namespace seqan;
 
 
-typedef std::tuple<unsigned, size_t> QGram; //Qgram Tupel
+typedef std::tuple<unsigned long, size_t> QGram; //Qgram Tupel
 typedef Iterator<String<QGram>, Rooted>::Type QIter; //Rooted Iterator
 typedef Seed<Simple> TSeed; //Seed Klasse
 typedef SeedSet<TSeed> TSeedSet; //Seed Set
-typedef Iterator<TSeedSet, Rooted>::Type SIter;
+typedef Iterator<TSeedSet>::Type SIter;
 
 String<QGram> qGram1;
 String<QGram> qGram2; //Strings, welche die HashWerte des QGram Index beinhalten sollen.
@@ -27,6 +27,8 @@ int main(int argc, char const *argv[]) {
    addArgument(parser, seqan::ArgParseArgument(seqan::ArgParseArgument::STRING, "Path1"));
    addArgument(parser, seqan::ArgParseArgument(seqan::ArgParseArgument::STRING, "Path2"));
    addOption(parser, seqan::ArgParseOption("q", "seed", "Set the length of the seed",seqan::ArgParseArgument::INTEGER, "INT"));
+   setMinValue(parser, "q", "1");
+   setMaxValue(parser, "q", "16");
    setDefaultValue(parser, "seed", "10");
    seqan::ArgumentParser::ParseResult res = seqan::parse(parser, argc, argv);
 
@@ -56,7 +58,7 @@ int main(int argc, char const *argv[]) {
    //einlesen der Fasta Dateien
 
 
-   Shape<Dna, UngappedShape<10> > myShape; //erstmals festgelegte Seedlänge, soll noch als optionale Eingabe modifiziert werden.
+   Shape<Dna, SimpleShape > myShape(q); //erstmals festgelegte Seedlänge, soll noch als optionale Eingabe modifiziert werden.
 
 
    hashInit(myShape, begin(seq1));
@@ -77,12 +79,13 @@ int main(int argc, char const *argv[]) {
        return std::get<0>(elem1) < std::get<0>(elem2);
    });
 
-
+   Score<int, Simple> scoringScheme(1, -1, -1);
    TSeedSet seedSet;
    QIter it1 = begin(qGram1);
    QIter it2 = begin(qGram2); //setze Iteratoren jeweils an den Anfang meiner Strings
-
-   std::cout << std::get<0>(*it1) << std::endl << std::get<0>(*it2); //Das war ein Test, ob es tatsächlich Hash Werte ausgibt.
+   //QIter it_mem1;
+   QIter it_mem2;
+   std::cout << std::get<0>(*it1) << std::endl << std::get<0>(*it2) << std::endl; //Das war ein Test, ob es tatsächlich Hash Werte ausgibt.
 
    while (!atEnd(it1) || !atEnd(it2)) //solange keiner der Iteratoren hinter dem letzten Element landet soll Loop ausgeführt werden
    {
@@ -92,29 +95,54 @@ int main(int argc, char const *argv[]) {
 
        else
        {
+           //it_mem1 = it1;
+           it_mem2 = it2;
            while(std::get<0>(*it1) == std::get<0>(*it2))
            {
-               addSeed(seedSet, TSeed(std::get<1>(*it1),std::get<1>(*it2), 9),Single());
+               TSeed seed (std::get<1>(*it1), std::get<1>(*it2), q);
+               extendSeed(seed, seq1, seq2, EXTEND_BOTH, MatchExtend());
+               if(!addSeed(seedSet,seed, 2, 1, scoringScheme, seq1, seq2, Chaos()))
+                   addSeed(seedSet, seed ,Single());
                goNext(it2);
            }
-           --it2;
-           while(std::get<0>(*it1) == std::get<0>(*it2))
+           it2 = it_mem2;
+           goNext(it1);
+        /*   while(std::get<0>(*it1) == std::get<0>(*it2))
            {
-               addSeed(seedSet,TSeed(std::get<1>(*it1),std::get<1>(*it2), 9),Single());
+               TSeed seed (std::get<1>(*it1), std::get<1>(*it2), 9);
+               extendSeed(seed, seq1, seq2, EXTEND_BOTH, MatchExtend());
+               if(!addSeed(seedSet,seed, 2, Merge()))
+                   addSeed(seedSet, seed, Single());
                goNext(it1);
            }// den Teil muss ich noch etwas bearbeiten, da mehrere Fälle abgedeckt werden müssen.
-           goNext(it2);
+           goNext(it2);*/
        }
    }
 
-/*
-   Score<int, Simple> scoringScheme(1, -1, -1);
+
+
+  /* for (SIter it3 = begin(seedSet, Standard()); it3 != end(seedSet, Standard()); ++it3)
+       {
+       TSeed myseed = *it3;
+       extendSeed(myseed, seq1, seq2, EXTEND_BOTH, scoringScheme, 5, GappedXDrop());
+     } */
    for (SIter it3 = begin(seedSet, Standard()); it3 != end(seedSet, Standard()); ++it3)
-       extendSeed(*it3, seq1, seq2, EXTEND_BOTH, scoringScheme, 5, GappedXDrop()); Der Teil funktioniert noch nicht
-*/
+       std::cout << "Seed: " << *it3 << std::endl;
+   std::cout << std::endl;
+
+   String<TSeed> chainedSeeds;
+   chainSeedsGlobally(chainedSeeds, seedSet, SparseChaining());
+
+   Align<Dna5String, ArrayGaps> alignment;
+   resize(rows(alignment), 2);
+   assignSource(row(alignment, 0), seq1);
+   assignSource(row(alignment, 1), seq2);
+
+   int result = bandedChainAlignment(alignment, chainedSeeds, scoringScheme, 2);
 
 
-
+   std::cout << "Score: " << result << std::endl;
+   std::cout << alignment << std::endl;
 
   return 0;
 }
