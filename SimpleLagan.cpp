@@ -1,3 +1,4 @@
+
 #include <iostream>
 #include <seqan/arg_parse.h>
 #include <seqan/sequence.h>
@@ -10,6 +11,7 @@
 #include <algorithm>
 #include <string>
 using namespace seqan;
+
 
 
 typedef std::tuple<unsigned long, size_t> QGram; //Qgram Tupel
@@ -46,8 +48,8 @@ int main(int argc, char const *argv[]) {
 
    CharString id1;
    CharString id2;
-   DnaString seq1;
-   DnaString seq2;
+   Dna5String seq1;
+   Dna5String seq2;
 
 
    SeqFileIn seqFileIn(toCString(path1));
@@ -91,11 +93,12 @@ int main(int argc, char const *argv[]) {
 
    std::cout << "Finding and extending of seeds starts!" << std::endl;
 
-   
 
 
-   unsigned long i = 0;
-   while (!atEnd(it1) || !atEnd(it2)) //solange keiner der Iteratoren hinter dem letzten Element landet soll Loop ausgeführt werden
+
+  //unsigned long i = 0ul;
+  //unsigned long step = length(qGram1)/100;
+   while (!atEnd(it1) && !atEnd(it2) ) //solange keiner der Iteratoren hinter dem letzten Element landet soll Loop ausgeführt werden
    {
        if(std::get<0>(*it1) > std::get<0>(*it2)) { goNext(it2); }
 
@@ -112,20 +115,21 @@ int main(int argc, char const *argv[]) {
                if(!addSeed(seedSet,seed, 2, 1, scoringScheme, seq1, seq2, Chaos()))
                addSeed(seedSet, seed ,Single());
                goNext(it2);
-               std::cout << "jo" << std::endl;
+          //     std::cout << "x" << std::endl;
            }
-           std::cout << i << std::endl;
-           i++;
+      }
+    //       if (i % step == 0)
+      //      std::cout << i << std::endl;
+        //   i++;
            goNext(it1);
            it2 = it_mem2;
 
 
-       }
+
    }
           std::cout << "Chaining seeds now!" << std::endl;
 
 /*
-
    for (SIter it3 = begin(seedSet, Standard()); it3 != end(seedSet, Standard()); ++it3)
        std::cout << "Seed: " << *it3 << std::endl;
    std::cout << std::endl;
