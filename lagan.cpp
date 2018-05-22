@@ -126,9 +126,9 @@ int main(int argc, char const *argv[])
                     //     std::cout << "x" << std::endl;
                 }
 
-        // if (i % step == 0)
-        // std::cout << i << std::endl;
-        //   i++;
+            // if (i % step == 0)
+            // std::cout << i << std::endl;
+            //   i++;
             goNext(it1);
             it2 = it_mem2;
             }
