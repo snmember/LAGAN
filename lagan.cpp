@@ -1,3 +1,8 @@
+#include <iostream>
+#include <fstream>
+#include <algorithm>
+#include <string>
+#include <chrono>
 #include <seqan/arg_parse.h>
 #include <seqan/sequence.h>
 #include <seqan/seq_io.h>
@@ -6,10 +11,7 @@
 #include <seqan/align.h>
 #include <seqan/score.h>
 #include <seqan/find.h>
-#include <iostream>
-#include <algorithm>
-#include <string>
-#include <chrono>
+
 
 using namespace seqan;
 
@@ -23,6 +25,11 @@ typedef Iterator<TSeedSet>::Type SIter;
 String<QGram> qGram1;
 String<QGram> qGram2; //Strings, welche die HashWerte des QGram Index beinhalten sollen.
 
+bool sortWithFirstElem (QGram const & elem1, QGram const & elem2) // sortiert QGram Liste anhand des Hashwerts
+{
+    return std::get<0>(elem1) < std::get<0>(elem2);
+}
+
 int main(int argc, char const *argv[])
 {
 
@@ -31,7 +38,7 @@ int main(int argc, char const *argv[])
     addArgument(parser, seqan::ArgParseArgument(seqan::ArgParseArgument::STRING, "Path2"));
     addOption(parser, seqan::ArgParseOption("q", "seed", "Set the length of the seed",seqan::ArgParseArgument::INTEGER, "INT"));
     setMinValue(parser, "q", "1");
-    setMaxValue(parser, "q", "32");
+    //setMaxValue(parser, "q", "100");
     setDefaultValue(parser, "seed", "10");
     seqan::ArgumentParser::ParseResult res = seqan::parse(parser, argc, argv);
 
@@ -76,17 +83,11 @@ int main(int argc, char const *argv[])
 
         std::cout << "Qgram index built, now sorting of the list begins" << std::endl;
 
-        std::sort(begin(qGram1), end(qGram1), [] (QGram const & elem1, QGram const & elem2) // sortiert QGram Liste anhand des Hashwerts
-        {
-            return std::get<0>(elem1) < std::get<0>(elem2);
-        });
+        std::sort(begin(qGram1), end(qGram1), sortWithFirstElem);
 
-        std::sort(begin(qGram2), end(qGram2), [] (QGram const & elem1, QGram const & elem2) // sortiert QGram Liste anhand des Hashwerts
-        {
-            return std::get<0>(elem1) < std::get<0>(elem2);
-        });
+        std::sort(begin(qGram2), end(qGram2), sortWithFirstElem);
 
-        Score<int, Simple> scoringScheme(1, -1, -1, -3);
+        Score<int, Simple> scoringScheme(3, -1, -1, -3);
         TSeedSet seedSet;
         QIter it1 = begin(qGram1);
         QIter it2 = begin(qGram2); //setze Iteratoren jeweils an den Anfang meiner Strings
@@ -120,7 +121,7 @@ int main(int argc, char const *argv[])
                 {
                     TSeed seed (std::get<1>(*it1), std::get<1>(*it2), q);
                     extendSeed(seed, seq1, seq2, EXTEND_BOTH, MatchExtend());
-                    if(!addSeed(seedSet,seed, 2, 1, scoringScheme, seq1, seq2, Chaos()))
+                    if(!addSeed(seedSet,seed, 20, 20, scoringScheme, seq1, seq2, Chaos()))
                     addSeed(seedSet, seed ,Single());
                     goNext(it2);
                     //     std::cout << "x" << std::endl;
@@ -135,34 +136,56 @@ int main(int argc, char const *argv[])
 
 
         }
-        std::cout << "Chaining seeds now!" << std::endl;
 
-        /*
-        for (SIter it3 = begin(seedSet, Standard()); it3 != end(seedSet, Standard()); ++it3)
-        std::cout << "Seed: " << *it3 << std::endl;
-        std::cout << std::endl;
-        */
+        if( empty(seedSet) == true){
+            std::cout << "No seeds could be set. Proceeding with ordinary global alignment." << std::endl;
+            Align<Dna5String, ArrayGaps> alignment;
+            resize(rows(alignment), 2);
+            assignSource(row(alignment, 0), seq1);
+            assignSource(row(alignment, 1), seq2);
 
-        String<TSeed> chainedSeeds;
-        chainSeedsGlobally(chainedSeeds, seedSet, SparseChaining());
+            int score = globalAlignment(alignment, scoringScheme);
+            std::cout << "Score: " << score << std::endl;
 
-        std::cout << "start to align sequences" << std::endl;
-        Align<Dna5String, ArrayGaps> alignment;
-        resize(rows(alignment), 2);
-        assignSource(row(alignment, 0), seq1);
-        assignSource(row(alignment, 1), seq2);
+            std::ofstream file;
+            file.open("Alignment.fasta");
+            file << alignment;
+            file.close();
+            }
+        else {
+            std::cout << "Chaining seeds now!" << std::endl;
 
-        int result = bandedChainAlignment(alignment, chainedSeeds, scoringScheme, 2);
+            /*
+            for (SIter it3 = begin(seedSet, Standard()); it3 != end(seedSet, Standard()); ++it3)
+            std::cout << "Seed: " << *it3 << std::endl;
+            std::cout << std::endl;
+            */
+
+            String<TSeed> chainedSeeds;
+            chainSeedsGlobally(chainedSeeds, seedSet, SparseChaining());
+
+            std::cout << "start to align sequences" << std::endl;
+            Align<Dna5String, ArrayGaps> alignment;
+            resize(rows(alignment), 2);
+            assignSource(row(alignment, 0), seq1);
+            assignSource(row(alignment, 1), seq2);
+
+            int result = bandedChainAlignment(alignment, chainedSeeds, scoringScheme, 2);
 
 
-        std::cout << "Score: " << result << std::endl;
-        std::cout << alignment << std::endl;
+            std::cout << "Score: " << result << std::endl;
+            //std::cout << alignment << std::endl;
+            std::ofstream file;
+            file.open("Alignment.fasta");
+            file << alignment;
+            file.close();
 
-        auto end = std::chrono::steady_clock::now();
+            auto end = std::chrono::steady_clock::now();
 
-        double t = double(std::chrono::duration_cast <std::chrono::nanoseconds> (end-start).count());
+            double t = double(std::chrono::duration_cast <std::chrono::nanoseconds> (end-start).count());
 
-        std::cout << t/1e9 << std::endl;
+            std::cout << t/1e9 << std::endl;
+            }
     }
 
     else
