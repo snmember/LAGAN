@@ -38,7 +38,6 @@ int main(int argc, char const *argv[])
     addArgument(parser, seqan::ArgParseArgument(seqan::ArgParseArgument::STRING, "Path2"));
     addOption(parser, seqan::ArgParseOption("q", "seed", "Set the length of the seed",seqan::ArgParseArgument::INTEGER, "INT"));
     setMinValue(parser, "q", "1");
-    //setMaxValue(parser, "q", "100");
     setDefaultValue(parser, "seed", "10");
     seqan::ArgumentParser::ParseResult res = seqan::parse(parser, argc, argv);
 
@@ -81,7 +80,7 @@ int main(int argc, char const *argv[])
         for (size_t i = 0; i < length(seq2) - length(myShape) + 1; ++i)
             appendValue(qGram2, std::make_tuple(hashNext(myShape, begin(seq2) + i), i)) ; //QGram Index und Position in Tupel speichern.
 
-        std::cout << "Qgram index built, now sorting of the list begins" << std::endl;
+        std::cout << "Qgram index built, now sorting of the list starts" << std::endl;
 
         std::sort(begin(qGram1), end(qGram1), sortWithFirstElem);
 
@@ -94,13 +93,12 @@ int main(int argc, char const *argv[])
         QIter it_mem2 = begin(qGram2);
 
 
-        std::cout << "Finding and extending of seeds starts!" << std::endl;
+        std::cout << "Finding and extension of seeds starts!" << std::endl;
 
 
 
 
-        //unsigned long i = 0ul;
-        //unsigned long step = length(qGram1)/100;
+       
         while (!atEnd(it1) && !atEnd(it2) ) //solange keiner der Iteratoren hinter dem letzten Element landet soll Loop ausgeführt werden
         {
             if(std::get<0>(*it1) > std::get<0>(*it2))
@@ -124,12 +122,8 @@ int main(int argc, char const *argv[])
                     if(!addSeed(seedSet,seed, 20, 20, scoringScheme, seq1, seq2, Chaos()))
                     addSeed(seedSet, seed ,Single());
                     goNext(it2);
-                    //     std::cout << "x" << std::endl;
                 }
-
-            // if (i % step == 0)
-            // std::cout << i << std::endl;
-            //   i++;
+                
             goNext(it1);
             it2 = it_mem2;
             }
@@ -154,12 +148,7 @@ int main(int argc, char const *argv[])
             }
         else {
             std::cout << "Chaining seeds now!" << std::endl;
-
-            /*
-            for (SIter it3 = begin(seedSet, Standard()); it3 != end(seedSet, Standard()); ++it3)
-            std::cout << "Seed: " << *it3 << std::endl;
-            std::cout << std::endl;
-            */
+            
 
             String<TSeed> chainedSeeds;
             chainSeedsGlobally(chainedSeeds, seedSet, SparseChaining());
