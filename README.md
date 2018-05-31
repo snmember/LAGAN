@@ -8,4 +8,4 @@ To use the lagan.cpp you have to follow the SeqAn Userguide on http://seqan.read
 
 Then you have to download the lagan.cpp and include it into your CMakeLists.txt
 
-After compiling you can use LAGAN by calling ./lagan -q --insert seed length (optional)-- pathtofile1 pathtofile2
+After compiling you can use LAGAN by calling:  ./lagan -q --insert seed length (optional)-- pathtofile1 pathtofile2
